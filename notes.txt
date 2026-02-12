@@ -1,0 +1,15 @@
+https://medium.com/maxwell-cross-python-for-red-teaming/building-a-custom-c2-server-in-python-a-fresh-take-on-offensive-security-e3d8c09bc2ab
+
+
+
+Basic architecture design:
+[Client] ---> [Server /api/beacon] (POST) --> "Do you have a task for me?"
+
+[Server] ---> (responds with task)
+
+[Client] ---> (executes task locally)
+
+[Client] ---> [Server /api/result] (POST) --> "Here’s the output."
+
+
+
