@@ -6,6 +6,7 @@ app = Flask(__name__)
 
 tasks = {} #in-memory task list
 agents = {}
+AGENT_TIMEOUT = 60
 
 
 @app.route('/api/status', methods=['POST']) # old /beacon
@@ -53,8 +54,20 @@ def task():
 
 @app.route('/api/agents', methods = ['GET'])
 def list_agents():
-    return jsonify(agents)
-
+    current_time = time.time()
+    enriched_agents = {}
+    
+    for agent_id, meta in agents.items():
+        last_seen = meta.get("last_seen", 0)
+        status = "online" if current_time - last_seen <= AGENT_TIMEOUT else "offline"
+        enriched_agents[agent_id] = {
+            **meta,
+            "status" : status
+        }
+    return jsonify(enriched_agents)
+        
+         
+        
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
 
