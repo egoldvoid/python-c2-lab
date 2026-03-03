@@ -30,7 +30,13 @@ def push_task(agent_id, task_obj):
     }
 
     r = requests.post(f"{SERVER_URL}/api/push", json=payload)
-    r.raise_for_status()
+    if r.status_code != 200:
+        try:
+            print("Error:", r.json())
+        except Exception:
+            print("Error:", r.text)
+        return
+
     print(f"Structured task queued for {agent_id}")
     
     
