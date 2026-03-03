@@ -1,9 +1,8 @@
 """
 Dispatches tasks through the tasks directory so they are not executed via shell 
 """
-from tasks import filesystem
-from tasks.sysinfo import get_sysinfo
-from tasks.python_exec import execute_python
+from .tasks import filesystem, sysinfo, python_exec
+# from tasks.python_exec import execute_python
 
 TASK_REGISTRY = {
     "list_directory": filesystem.list_directory,
@@ -11,8 +10,12 @@ TASK_REGISTRY = {
     "write_file": filesystem.write_file,
     "delete_file": filesystem.delete_file,
     "sample_file": filesystem.sample_file,
-    "get_sysinfo": get_sysinfo,
-    "python_exec": execute_python
+    "get_sysinfo": sysinfo.get_sysinfo,
+    "get_env" : sysinfo.get_env,
+    "get_uptime" : sysinfo.get_uptime,
+    "get_processes" : sysinfo.get_proccesses,
+    "python_exec": python_exec.execute_python,
+    
 }
 
 def execute_task(task):

@@ -44,12 +44,16 @@ def result():
 
 @app.route('/api/push', methods=['POST']) # old /task
 def task():
-    agent_id = request.json.get('id')
-    command = request.json.get('command')
-    if agent_id not in tasks:
-        tasks[agent_id] = []
-    tasks[agent_id].append(command)
-    return jsonify({"status" : "task queued"})
+    data = request.json
+    agent_id = data.get('id')
+    task = data.get('task')
+
+    if not agent_id or not task:
+        return jsonify({"error": "Missing id or task"}), 400
+
+    tasks.setdefault(agent_id, []).append(task)
+
+    return jsonify({"status": "task queued"})
 
 
 @app.route('/api/agents', methods = ['GET'])
