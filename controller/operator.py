@@ -1,6 +1,7 @@
 import argparse
 import requests
-import json
+from common.cryptography_helpers import encrypt_string, decrypt_string
+import json 
 
 SERVER_URL = "http://127.0.0.1:5000"
 
@@ -21,14 +22,22 @@ def list_agents():
         print(f"  last_seen: {meta.get('last_seen')}")
         print()
         
-def push_task(agent_id, command):
+def push_task(agent_id, task_obj):
+
     payload = {
-        "id" : agent_id,
-        "command" : command
-        }
+        "id": agent_id,
+        "task": json.dumps(task_obj)
+    }
+
     r = requests.post(f"{SERVER_URL}/api/push", json=payload)
-    r.raise_for_status()
-    print(f"Task queued for {agent_id}")
+    if r.status_code != 200:
+        try:
+            print("Error:", r.json())
+        except Exception:
+            print("Error:", r.text)
+        return
+
+    print(f"Structured task queued for {agent_id}")
     
     
 
@@ -40,14 +49,26 @@ def main():
     
     exec_p = sub.add_parser("exec")
     exec_p.add_argument("agent_id")
-    exec_p.add_argument("command")
+    exec_p.add_argument("task_type")
+    exec_p.add_argument("--args", default="{}")
 
     args = parser.parse_args()
 
     if args.cmd == "agents":
         list_agents()
     elif args.cmd == "exec":
-        push_task(args.agent_id, args.command)
+        try:
+            task_args = json.loads(args.args)
+        except json.JSONDecodeError:
+            print("Invalid JSON for --args")
+            return
+
+        task_obj = {
+                "type": args.task_type,
+                "args": task_args
+         }
+        push_task(args.agent_id, task_obj)
+        
     else:
         parser.print_help()
         
