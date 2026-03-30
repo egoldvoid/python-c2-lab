@@ -19,13 +19,13 @@ def get_sysinfo(args):
         return {"status": "error", "message": str(e)}
 
 def get_env(args):
-    try: 
+    try:
         return {
-            {"status": "success",
-             "env" : dict(os.environ)}
+            "status": "success",
+            "env": dict(os.environ)
         }
     except Exception as e:
-         return {"status": "error", "message": str(e)}
+        return {"status": "error", "message": str(e)}
      
 def get_uptime(args):
     try:
