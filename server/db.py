@@ -6,7 +6,6 @@ Fernet-encrypted with a dedicated key stored in config/db_key before
 being written to disk. The SQLite file is useless without that key file.
 """
 import os
-import secrets
 import sqlite3
 import time
 

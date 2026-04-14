@@ -44,7 +44,7 @@ def api_login():
         return jsonify({"error": "Too many login attempts"}), 429
     _login_attempts[ip].append(now)
 
-    data     = request.json or {}
+    data = request.json or {}
     username = data.get('username', '').strip()
     password = data.get('password', '')
     if not username or not password:
