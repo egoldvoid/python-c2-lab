@@ -1,9 +1,14 @@
 __pycache__/
 venv/
 agent/.agent_id
-*.pyc 
+*.pyc
 DESIGN.md
-exfil/ 
+exfil/
+config/shared_key
+config/agent_key
+config/db_key
+config/credentials.db
+controller/.operator_token
 
 
 

@@ -64,7 +64,7 @@ def read_file(args):
     
     try:
         with open(path, "r") as f:
-            content = f.read(path, 1024*1024) # files can be 1 MB max at this point
+            content = f.read(1024 * 1024)  # 1 MB max
             return {
                 "status": "success",
                 "content": content
