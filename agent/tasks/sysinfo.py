@@ -41,7 +41,7 @@ def get_uptime(args):
     except Exception as e:
         return {"status": "error", "message": str(e)}
     
-def get_proccesses(args):
+def get_processes(args):
     
     try: 
         limit = args.get("limit", 50) 
