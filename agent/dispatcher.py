@@ -14,7 +14,7 @@ TASK_REGISTRY = {
     "get_sysinfo": sysinfo.get_sysinfo,
     "get_env" : sysinfo.get_env,
     "get_uptime" : sysinfo.get_uptime,
-    "get_processes" : sysinfo.get_proccesses,
+    "get_processes" : sysinfo.get_processes,
     "python_exec": python_exec.execute_python,
     
 }

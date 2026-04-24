@@ -79,6 +79,16 @@ def init_db():
                 last_seen REAL NOT NULL
             )
         """)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS login_attempts (
+                ip           TEXT NOT NULL,
+                attempted_at REAL NOT NULL
+            )
+        """)
+        conn.execute("""
+            CREATE INDEX IF NOT EXISTS idx_login_attempts_ip_time
+            ON login_attempts (ip, attempted_at)
+        """)
 
 
 # ── Public API ────────────────────────────────────────────────────────────────
@@ -217,6 +227,47 @@ def task_clear_for_agent(agent_id: str):
 
 
 # ── Agent registry ────────────────────────────────────────────────────────────
+
+def task_requeue_stale(delivered_timeout: float = 300):
+    """Re-queue tasks stuck in 'delivered' for longer than delivered_timeout seconds.
+
+    Called on server startup to recover tasks that were handed to an agent but
+    never resulted in an upload (e.g. server was killed between delivery and result).
+    """
+    cutoff = time.time() - delivered_timeout
+    with _connect() as conn:
+        conn.execute(
+            """UPDATE tasks SET status = 'queued', delivered_at = NULL
+               WHERE status = 'delivered' AND delivered_at < ?""",
+            (cutoff,),
+        )
+
+
+# ── Login rate limiter (SQLite-backed, safe across multiple workers) ──────────
+
+def record_login_attempt(ip: str):
+    with _connect() as conn:
+        conn.execute(
+            "INSERT INTO login_attempts (ip, attempted_at) VALUES (?, ?)",
+            (ip, time.time()),
+        )
+
+
+def count_recent_attempts(ip: str, window: float) -> int:
+    cutoff = time.time() - window
+    with _connect() as conn:
+        return conn.execute(
+            "SELECT COUNT(*) FROM login_attempts WHERE ip = ? AND attempted_at > ?",
+            (ip, cutoff),
+        ).fetchone()[0]
+
+
+def purge_old_attempts(window: float):
+    """Remove attempt records outside the window to keep the table small."""
+    cutoff = time.time() - window
+    with _connect() as conn:
+        conn.execute("DELETE FROM login_attempts WHERE attempted_at < ?", (cutoff,))
+
 
 def agent_upsert(agent_id: str, hostname: str, os_name: str, user: str):
     with _connect() as conn:

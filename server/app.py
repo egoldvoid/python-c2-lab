@@ -6,9 +6,12 @@ from server.db import (
     task_create, task_count_queued, task_get_next_queued,
     task_mark_delivered, task_mark_completed,
     task_list_for_agent, task_clear_for_agent,
+    task_requeue_stale,
     agent_upsert, agent_list,
+    record_login_attempt, count_recent_attempts, purge_old_attempts,
 )
 init_db()
+task_requeue_stale()
 import time
 import os
 import uuid
@@ -16,11 +19,10 @@ import base64
 import json
 
 app = Flask(__name__)
+app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16 MB — covers a max 5 MB exfil after base64 + Fernet overhead
 
 AGENT_TIMEOUT = 60
 
-# Simple in-memory rate limiter for /api/login
-_login_attempts: dict[str, list[float]] = {}
 LOGIN_MAX_ATTEMPTS = 10
 LOGIN_WINDOW_SECONDS = 60
 
@@ -41,13 +43,10 @@ def login_page():
 @app.route('/api/login', methods=['POST'])
 def api_login():
     ip = request.remote_addr
-    now = time.time()
-    attempts = _login_attempts.setdefault(ip, [])
-    # Drop attempts outside the window
-    _login_attempts[ip] = [t for t in attempts if now - t < LOGIN_WINDOW_SECONDS]
-    if len(_login_attempts[ip]) >= LOGIN_MAX_ATTEMPTS:
+    purge_old_attempts(LOGIN_WINDOW_SECONDS)
+    if count_recent_attempts(ip, LOGIN_WINDOW_SECONDS) >= LOGIN_MAX_ATTEMPTS:
         return jsonify({"error": "Too many login attempts"}), 429
-    _login_attempts[ip].append(now)
+    record_login_attempt(ip)
 
     data = request.json or {}
     username = data.get('username', '').strip()
